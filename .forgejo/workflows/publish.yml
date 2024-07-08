@@ -1,0 +1,16 @@
+name: Publish to burnedkirby.com/subtitle
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  publish-site:
+    runs-on: local_self
+    steps:
+      - name: Clone repo
+        run: git clone --depth=1 --no-single-branch https://git.seodisparate.com/stephenseo/subtitle_displayer.git
+      - name: Checkout main
+        run: cd subtitle_displayer && git checkout main
+      - name: Publish index.html
+        run: cp subtitle_displayer/index.html /srv/http/burnedkirby.com/subtitle/
