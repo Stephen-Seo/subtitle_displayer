@@ -1,0 +1,263 @@
+<!--
+    HTML page that views subtitles.
+    Copyright (C) 2024  Stephen Seo
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+    Contact info: stephen@seodisparate.com
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Subtitle Viewer</title>
+  <style>
+    body {
+      color: #FFF;
+      background: #333;
+    }
+    .large_text {
+      font-size: 11vh;
+    }
+    .small_text {
+      font-size: 3vh;
+    }
+    input#s_idx {
+      position: fixed;
+      bottom: 0;
+      left: 30vw;
+      width: 39%;
+    }
+    button.transport_button {
+      background-color: transparent;
+      background-repeat: no-repeat;
+      font-size: 29vw;
+      outline: none;
+      color: rgba(0, 0, 0, 0.4);
+    }
+    button#left_button {
+      position: fixed;
+      top: 20vh;
+      left: 0;
+      width: 30%;
+      height: 99%;
+    }
+    button#right_button {
+      position: fixed;
+      top: 20vh;
+      right: 0;
+      width: 30%;
+      height: 99%;
+    }
+  </style>
+  <script>
+    class SubtitlePart {
+      constructor(idx, time_start, time_end, timestamp_start, timestamp_end, text) {
+        this.idx = idx;
+        this.time_start = time_start;
+        this.time_end = time_end;
+        this.timestamp_start = timestamp_start;
+        this.timestamp_end = timestamp_end;
+        this.text = text;
+      }
+    }
+
+    const subtitles_array = [];
+    var current_subtitle = 0;
+
+    function display_subtitle() {
+      if (current_subtitle < subtitles_array.length) {
+        document.getElementById("subtitle_text").textContent = subtitles_array[current_subtitle].text;
+        document.getElementById("subtitle_time").textContent = subtitles_array[current_subtitle].timestamp_start + " --> " + subtitles_array[current_subtitle].timestamp_end;
+      } else {
+        document.getElementById("subtitle_text").textContent = "Internal Error";
+      }
+    }
+
+    function parse_timestamp(timestamp) {
+      const timestamp_re = /(?:(?:(?:([0-9]+:)?)([0-9]+:)?)([0-9]+,[0-9]+)?)/
+      const seconds_re = /([0-9][0-9]),([0-9]+)/
+      const re_match_ts = timestamp_re.exec(timestamp.trim());
+      var counter = 0;
+      var temp_time = 0.0;
+      for (var idx = re_match_ts.length - 1; idx > 0; --idx) {
+        if (re_match_ts[idx] === undefined) {
+          continue;
+        }
+
+        if (counter === 0) {
+          const re_match_ts_seconds = seconds_re.exec(re_match_ts[idx]);
+          if (re_match_ts_seconds[1] !== undefined) {
+            temp_time += parseFloat(re_match_ts_seconds[1]);
+            if (re_match_ts_seconds[2] !== undefined) {
+              temp_time += parseFloat("0." + re_match_ts_seconds[2]);
+            }
+          }
+          ++counter;
+        } else if (counter === 1) {
+          temp_time += parseFloat(re_match_ts[idx]) * 60.0;
+          ++counter;
+        } else if (counter === 2) {
+          temp_time += parseFloat(re_match_ts[idx]) * 60.0 * 60.0;
+          ++counter;
+        }
+      }
+
+      return temp_time;
+    }
+
+    function parse_subtitles(subtitles) {
+      subtitles_array.length = 0;
+      // Split on lines.
+      const lines = subtitles.trim().split("\n");
+      const number_re = /^[0-9]+$/;
+      var subtitle_number = 0;
+      var newline_reached = true;
+      var number_reached = false;
+      var timestamp_reached = false;
+      var ts_first = 0.0;
+      var ts_second = 0.0;
+      var ts_first_ts = undefined;
+      var ts_second_ts = undefined;
+      var part_text = undefined;
+      for (var lidx = 0; lidx < lines.length; ++lidx) {
+        var line = lines[lidx].trim();
+        if (line.length === 0) {
+          newline_reached = true;
+          number_reached = false;
+          timestamp_reached = false;
+          if (ts_second !== 0.0 && part_text !== undefined) {
+            subtitles_array.push(new SubtitlePart(subtitle_number, ts_first, ts_second, ts_first_ts, ts_second_ts, part_text));
+          }
+          ts_first = 0.0;
+          ts_second = 0.0;
+          ts_first_ts = undefined;
+          ts_second_ts = undefined;
+          part_text = undefined;
+        } else if (newline_reached && number_re.test(line)) {
+          subtitle_number = parseInt(line);
+          newline_reached = false;
+          number_reached = true;
+        } else if (number_reached) {
+          var times = line.split(/-->/);
+          if (times.length !== 2) {
+            console.log("ERROR: Failed to parse timestamp at " + subtitle_number + ".");
+          } else {
+            ts_first_ts = times[0];
+            ts_second_ts = times[1];
+            ts_first = parse_timestamp(times[0]);
+            ts_second = parse_timestamp(times[1]);
+          }
+          number_reached = false;
+          timestamp_reached = true;
+        } else if (timestamp_reached) {
+          if (part_text === undefined) {
+            part_text = line;
+          } else {
+            part_text += " " + line;
+          }
+        }
+      }
+      if (ts_second !== 0.0 && part_text !== undefined) {
+        subtitles_array.push(new SubtitlePart(subtitle_number, ts_first, ts_second, ts_first_ts, ts_second_ts, part_text));
+      }
+      current_subtitle = 0;
+      if (subtitles_array.length > 1) {
+        document.getElementById("s_idx").max = subtitles_array.length - 1;
+      } else {
+        document.getElementById("s_idx").max = 1;
+      }
+      display_subtitle();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      var uploadInput = document.getElementById("uploadInput");
+      const subtitle_slider = document.getElementById("s_idx");
+
+      uploadInput.addEventListener(
+        "change",
+        () => {
+          if (uploadInput.files.length > 0) {
+            let reader = new FileReader();
+            reader.addEventListener(
+              "load",
+              () => {
+                parse_subtitles(reader.result);
+                document.getElementById("upload_div").remove();
+              }
+            );
+            reader.readAsText(uploadInput.files[0]);
+          }
+        }
+      );
+
+      subtitle_slider.addEventListener("input", (event) => {
+        var value = Math.round(event.target.value);
+        if (value < 0) {
+          value = 0;
+        } else if (value >= subtitles_array.length) {
+          value = subtitles_array.length - 1;
+        }
+        current_subtitle = value;
+        display_subtitle();
+      });
+
+      document.getElementById("left_button").addEventListener(
+        "click",
+        () => {
+          if (current_subtitle > 0) {
+            current_subtitle -= 1;
+            display_subtitle();
+            document.getElementById("s_idx").value = current_subtitle;
+          }
+        }
+      );
+      document.getElementById("right_button").addEventListener(
+        "click",
+        () => {
+          if (current_subtitle + 1 < subtitles_array.length) {
+            current_subtitle += 1;
+            display_subtitle();
+            document.getElementById("s_idx").value = current_subtitle;
+          }
+        }
+      );
+    });
+  </script>
+</head>
+<body>
+  <div id="upload_div">
+    <form name="uploadForm">
+      <div>
+        <input id="uploadInput" type="file" />
+      </div>
+    </form>
+  </div>
+  <div id="subtitle_text" class="large_text">
+    Pick a subtitle ".srt" file. Subtitles will appear here.
+  </div>
+  <div id="subtitle_time" class="small_text">
+  </div>
+  <div id="slider">
+    <input type="range" id="s_idx" name="subtitle index" min="0" max="1" step="any" />
+  </div>
+  <button id="left_button" class="transport_button" type="button">⬅️</button>
+  <button id="right_button" class="transport_button" type="button">➡️</button>
+</body>
+</html>
+
+<!--
+    vim: ts=2 sts=2 sw=2
+-->
