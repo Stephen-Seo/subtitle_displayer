@@ -231,7 +231,7 @@
         }
         requestAnimationFrame(on_animation_frame);
       } else {
-        document.getElementById("playpause_button").textContent = "⏵";
+        document.getElementById("playpause_button").textContent = "▶";
         is_playing = false;
       }
     }
@@ -302,7 +302,7 @@
           } else {
             is_playing = false;
             let playpause_button = document.getElementById("playpause_button");
-            playpause_button.textContent = "⏵";
+            playpause_button.textContent = "▶";
             playpause_button.style["transition"] = "all 0s linear";
             playpause_button.style["background-position"] = "left";
           }
@@ -329,7 +329,7 @@
   </div>
   <button id="left_button" class="transport_button" type="button">⬅️</button>
   <button id="right_button" class="transport_button" type="button">➡️</button>
-  <button id="playpause_button" class="transport_button" type="button">⏵</button>
+  <button id="playpause_button" class="transport_button" type="button">▶</button>
 </body>
 </html>
 
