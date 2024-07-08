@@ -38,7 +38,9 @@
       position: fixed;
       bottom: 0;
       left: 30vw;
-      width: 39%;
+      width: 39vw;
+      height: 4vh;
+      z-index: 2;
     }
     button.transport_button {
       background-color: transparent;
@@ -46,20 +48,33 @@
       font-size: 29vw;
       outline: none;
       color: rgba(0, 0, 0, 0.4);
+      z-index: 1;
     }
     button#left_button {
       position: fixed;
       top: 20vh;
       left: 0;
-      width: 30%;
-      height: 99%;
+      width: 30vw;
+      height: 70vh;
     }
     button#right_button {
       position: fixed;
       top: 20vh;
       right: 0;
-      width: 30%;
-      height: 99%;
+      width: 30vw;
+      height: 70vh;
+    }
+    button#playpause_button {
+      position: fixed;
+      bottom: 10vh;
+      left: 35vw;
+      width: 30vw;
+      height: 20vh;
+      font-size: 18vh;
+      /* animation */
+      background: linear-gradient(to left, green 50%, white 50%) right;
+      background-size: 200% 100%;
+      background-position: left;
     }
   </style>
   <script>
@@ -76,11 +91,18 @@
 
     const subtitles_array = [];
     var current_subtitle = 0;
+    var current_time = 0.0;
+    var prev_timestamp = 0.0;
+    var is_playing = false;
 
     function display_subtitle() {
       if (current_subtitle < subtitles_array.length) {
         document.getElementById("subtitle_text").textContent = subtitles_array[current_subtitle].text;
         document.getElementById("subtitle_time").textContent = subtitles_array[current_subtitle].timestamp_start + " --> " + subtitles_array[current_subtitle].timestamp_end;
+        document.getElementById("s_idx").value = current_subtitle;
+        current_time = subtitles_array[current_subtitle].time_start;
+      } else if (current_subtitle === subtitles_array.length) {
+        document.getElementById("subtitle_text").textContent = "End of subtitles.";
       } else {
         document.getElementById("subtitle_text").textContent = "Internal Error";
       }
@@ -182,6 +204,38 @@
       display_subtitle();
     }
 
+    function set_up_play_anim() {
+      if (is_playing) {
+        requestAnimationFrame((time) => {
+          playpause_button.style["transition"] = "all 0s linear";
+          playpause_button.style["background-position"] = "left";
+          requestAnimationFrame((time) => {
+            let playpause_button = document.getElementById("playpause_button");
+            let duration = subtitles_array[current_subtitle].time_end
+                         - current_time;
+            playpause_button.style["transition"] = "all " + duration + "s linear";
+            playpause_button.style["background-position"] = "right";
+          });
+        });
+      }
+    }
+
+    function on_animation_frame(anim_timestamp) {
+      if (is_playing && current_subtitle >= 0 && current_subtitle < subtitles_array.length) {
+        current_time += (anim_timestamp - prev_timestamp) / 1000.0;
+        prev_timestamp = anim_timestamp;
+        if (current_time > subtitles_array[current_subtitle].time_end) {
+          ++current_subtitle;
+          display_subtitle();
+          set_up_play_anim();
+        }
+        requestAnimationFrame(on_animation_frame);
+      } else {
+        document.getElementById("playpause_button").textContent = "⏵";
+        is_playing = false;
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       var uploadInput = document.getElementById("uploadInput");
       const subtitle_slider = document.getElementById("s_idx");
@@ -220,7 +274,7 @@
           if (current_subtitle > 0) {
             current_subtitle -= 1;
             display_subtitle();
-            document.getElementById("s_idx").value = current_subtitle;
+            set_up_play_anim();
           }
         }
       );
@@ -230,7 +284,26 @@
           if (current_subtitle + 1 < subtitles_array.length) {
             current_subtitle += 1;
             display_subtitle();
-            document.getElementById("s_idx").value = current_subtitle;
+            set_up_play_anim();
+          }
+        }
+      );
+      document.getElementById("playpause_button").addEventListener(
+        "click",
+        () => {
+          is_playing = !is_playing;
+          if (is_playing && current_subtitle >= 0 && current_subtitle < subtitles_array.length) {
+            current_time = subtitles_array[current_subtitle].time_start;
+            requestAnimationFrame(on_animation_frame);
+            prev_timestamp = document.timeline.currentTime;
+            document.getElementById("playpause_button").textContent = "⏸";
+            set_up_play_anim();
+          } else {
+            is_playing = false;
+            let playpause_button = document.getElementById("playpause_button");
+            playpause_button.textContent = "⏵";
+            playpause_button.style["transition"] = "all 0s linear";
+            playpause_button.style["background-position"] = "left";
           }
         }
       );
@@ -255,6 +328,7 @@
   </div>
   <button id="left_button" class="transport_button" type="button">⬅️</button>
   <button id="right_button" class="transport_button" type="button">➡️</button>
+  <button id="playpause_button" class="transport_button" type="button">⏵</button>
 </body>
 </html>
 
