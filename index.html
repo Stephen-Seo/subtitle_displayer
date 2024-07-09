@@ -92,6 +92,7 @@
     const subtitles_array = [];
     var current_subtitle = 0;
     var current_time = 0.0;
+    var current_end = 1.0;
     var prev_timestamp = 0.0;
     var is_playing = false;
 
@@ -101,6 +102,12 @@
         document.getElementById("subtitle_time").textContent = subtitles_array[current_subtitle].timestamp_start + " --> " + subtitles_array[current_subtitle].timestamp_end;
         document.getElementById("s_idx").value = current_subtitle;
         current_time = subtitles_array[current_subtitle].time_start;
+        if (current_subtitle + 1 < subtitles_array.length
+            && subtitles_array[current_subtitle + 1].time_start > subtitles_array[current_subtitle].time_end) {
+          current_end = subtitles_array[current_subtitle + 1].time_start;
+        } else {
+          current_end = subtitles_array[current_subtitle].time_end;
+        }
       } else if (current_subtitle === subtitles_array.length) {
         document.getElementById("subtitle_text").textContent = "End of subtitles.";
       } else {
@@ -211,8 +218,7 @@
           playpause_button.style["background-position"] = "left";
           requestAnimationFrame((time) => {
             let playpause_button = document.getElementById("playpause_button");
-            let duration = subtitles_array[current_subtitle].time_end
-                         - current_time;
+            let duration = current_end - current_time;
             playpause_button.style["transition"] = "all " + duration + "s linear";
             playpause_button.style["background-position"] = "right";
           });
@@ -224,7 +230,7 @@
       if (is_playing && current_subtitle >= 0 && current_subtitle < subtitles_array.length) {
         current_time += (anim_timestamp - prev_timestamp) / 1000.0;
         prev_timestamp = anim_timestamp;
-        if (current_time > subtitles_array[current_subtitle].time_end) {
+        if (current_time > current_end) {
           ++current_subtitle;
           display_subtitle();
           set_up_play_anim();
