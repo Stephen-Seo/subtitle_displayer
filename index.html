@@ -285,12 +285,16 @@
         } else if (value >= subtitles_array.length) {
           value = subtitles_array.length - 1;
         }
-        current_subtitle = value;
-        time_info.set_time_offset(
-          subtitles_array[current_subtitle].time_start * 1000.0
-        );
-        display_subtitle();
-        set_up_play_anim();
+
+        // Only when value is valid.
+        if (value >= 0 && value < subtitles_array.length) {
+          current_subtitle = value;
+          time_info.set_time_offset(
+            subtitles_array[current_subtitle].time_start * 1000.0
+          );
+          display_subtitle();
+          set_up_play_anim();
+        }
       });
 
       document.getElementById("left_button").addEventListener(
