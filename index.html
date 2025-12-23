@@ -1,6 +1,6 @@
 <!--
     HTML page that views subtitles.
-    Copyright (C) 2024  Stephen Seo
+    Copyright (C) 2024-2025 Stephen Seo
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -119,6 +119,7 @@
     var current_end = 1.0;
     var current_duration = 1.0;
     var is_playing = false;
+    var wake_lock = null;
 
     function display_subtitle() {
       if (current_subtitle < subtitles_array.length) {
@@ -262,6 +263,12 @@
       } else {
         document.getElementById("playpause_button").textContent = "▶";
         is_playing = false;
+        if (wake_lock !== null) {
+          wake_lock.release().then(() => {
+            wake_lock = null;
+            //console.log("wake lock released");
+          });
+        }
       }
     }
 
@@ -335,6 +342,23 @@
         "click",
         () => {
           is_playing = !is_playing;
+
+          if (wake_lock === null && is_playing) {
+            try {
+              navigator.wakeLock.request("screen").then((lock) => {
+                wake_lock = lock;
+                //console.log("wake lock acquired");
+              });
+            } catch (_unused_err) {
+              wake_lock = null;
+            }
+          } else if (wake_lock !== null && !is_playing) {
+            wake_lock.release().then(() => {
+              wake_lock = null;
+              //console.log("wake lock released");
+            });
+          }
+
           if (is_playing && current_subtitle >= 0 && current_subtitle < subtitles_array.length) {
             time_info.set_time_offset(
               subtitles_array[current_subtitle].time_start * 1000.0
